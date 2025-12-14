@@ -16,7 +16,7 @@ export default defineConfig({
         text: 'Blog',
         items: [
           { text: 'MCP', link: '/blog/20251207MCP' },
-          { text: 'React', link: '/blog/React' },
+          { text: 'React Hooks useSyncExternalStore', link: '/blog/React' },
         ],
       },
     ],
