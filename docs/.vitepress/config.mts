@@ -8,13 +8,16 @@ export default defineConfig({
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Blog', link: '/blog/20251207MCP' },
+      { text: 'Blog', link: '/blog/introduce/' },
     ],
 
     sidebar: [
       {
         text: 'Blog',
-        items: [{ text: 'MCP', link: '/blog/20251207MCP' }],
+        items: [
+          { text: 'MCP', link: '/blog/20251207MCP' },
+          { text: 'React', link: '/blog/React' },
+        ],
       },
     ],
 
