@@ -4,22 +4,12 @@ layout: home
 
 hero:
   name: "inkwall's blog"
-  text: "不积跬步无以至千里"
-  tagline: My great project tagline
+  text: ""
+  tagline: 不积跬步，无以至千里；不积小流，无以成江海。
   actions:
-    - theme: brand
-      text: Markdown Examples
-      link: /markdown-examples
-    - theme: alt
-      text: API Examples
-      link: /api-examples
+  
 
 features:
-  - title: Feature A
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature B
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature C
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+
 ---
 
