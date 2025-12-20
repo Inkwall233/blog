@@ -1,5 +1,6 @@
 {
   "devDependencies": {
+    "@types/three": "^0.182.0",
     "vitepress": "^2.0.0-alpha.15"
   },
   "scripts": {
@@ -7,5 +8,9 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "post:add-date": "node scripts/add-post-date.js"
+  },
+  "dependencies": {
+    "dat.gui": "^0.7.9",
+    "three": "^0.182.0"
   }
 }
