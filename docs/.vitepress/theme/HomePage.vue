@@ -1,15 +1,90 @@
 <script setup lang="ts">
 import * as THREE from 'three'
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { FontLoader } from 'three/addons/loaders/FontLoader.js'
 import { TextGeometry } from 'three/addons/geometries/TextGeometry.js'
+import { TorusGeometry, ConeGeometry, BoxGeometry } from 'three'
 import { onMounted, onUnmounted } from 'vue'
-// import * as dat from 'dat.gui'
+import * as dat from 'dat.gui'
 
-// const gui = new dat.GUI({ width: 400 })
+const gui = new dat.GUI({ width: 400 })
 
 // 创建场景
 const scene = new THREE.Scene()
+
+// 添加星空背景
+const starsGeometry = new THREE.BufferGeometry()
+const starsMaterial = new THREE.PointsMaterial({
+	color: 0xffffff,
+	size: 0.02,
+	transparent: true,
+	opacity: 0.8,
+})
+
+// 创建大量星星粒子
+const starsVertices = []
+for (let i = 0; i < 5000; i++) {
+	const x = (Math.random() - 0.5) * 200
+	const y = (Math.random() - 0.5) * 200
+	const z = (Math.random() - 0.5) * 200
+	starsVertices.push(x, y, z)
+}
+
+starsGeometry.setAttribute(
+	'position',
+	new THREE.Float32BufferAttribute(starsVertices, 3)
+)
+
+const starField = new THREE.Points(starsGeometry, starsMaterial)
+scene.add(starField)
+
+// 添加星云背景效果
+const nebulaParticles = []
+const nebulaGeometry = new THREE.BufferGeometry()
+const nebulaMaterial = new THREE.PointsMaterial({
+	size: 0.2,
+	transparent: true,
+	opacity: 0.3,
+	color: new THREE.Color(0x4488ff),
+	blending: THREE.AdditiveBlending,
+})
+
+const nebulaVertices = []
+const nebulaColors = []
+
+for (let i = 0; i < 1000; i++) {
+	// 星云粒子分布在球形区域内
+	const radius = 50
+	const theta = Math.random() * Math.PI * 2
+	const phi = Math.acos(2 * Math.random() - 1)
+
+	const x = radius * Math.sin(phi) * Math.cos(theta)
+	const y = radius * Math.sin(phi) * Math.sin(theta)
+	const z = radius * Math.cos(phi)
+
+	nebulaVertices.push(x, y, z)
+
+	// 添加颜色变化
+	const color = new THREE.Color(
+		Math.random() * 0.5 + 0.5,
+		Math.random() * 0.5 + 0.3,
+		Math.random() * 0.8 + 0.2
+	)
+	nebulaColors.push(color.r, color.g, color.b)
+}
+
+nebulaGeometry.setAttribute(
+	'position',
+	new THREE.Float32BufferAttribute(nebulaVertices, 3)
+)
+nebulaGeometry.setAttribute(
+	'color',
+	new THREE.Float32BufferAttribute(nebulaColors, 3)
+)
+
+nebulaMaterial.vertexColors = true
+const nebula = new THREE.Points(nebulaGeometry, nebulaMaterial)
+scene.add(nebula)
+nebulaParticles.push(nebula)
 
 const sizes = {
 	width: window.innerWidth,
@@ -25,9 +100,8 @@ const camera = new THREE.PerspectiveCamera(
 )
 // 初始位置设置在更远的地方，以便有足够空间做动画
 camera.position.set(0, 0, 10)
-camera.lookAt(0, 0, 0)
 
-// gui.add(camera.position, 'z').min(0).max(100).step(0.1)
+gui.add(camera.position, 'z').min(0).max(100).step(0.1)
 
 window.addEventListener('resize', () => {
 	// Update sizes
@@ -49,25 +123,45 @@ let startTime: number | null = null
 let donuts: THREE.Mesh[] = []
 let mouseX = 0
 let mouseY = 0
+let targetRotationY = 0
+let currentRotationY = 0
+let currentRotationX = 0
+let targetRotationX = 0
+let mouseDown = false
+let donutOriginalPositions: THREE.Vector3[] = []
 
 const windowHalfX = window.innerWidth / 2
 const windowHalfY = window.innerHeight / 2
 
 // 鼠标事件处理函数
 const handleMouseMove = (event: MouseEvent) => {
-	// 将鼠标位置映射到-1到1的范围内
+	// 将鼠标位置映射为旋转角度
 	mouseX = (event.clientX - windowHalfX) / windowHalfX
 	mouseY = (event.clientY - windowHalfY) / windowHalfY
+	targetRotationY = (mouseX * Math.PI) / 3
+	targetRotationX = (mouseY * Math.PI) / 3
+}
+
+const handleMouseDown = () => {
+	mouseDown = true
+}
+
+const handleMouseUp = () => {
+	mouseDown = false
 }
 
 // 添加鼠标事件监听器
 onMounted(() => {
 	window.addEventListener('mousemove', handleMouseMove)
+	window.addEventListener('mousedown', handleMouseDown)
+	window.addEventListener('mouseup', handleMouseUp)
 })
 
 // 移除鼠标事件监听器
 onUnmounted(() => {
 	window.removeEventListener('mousemove', handleMouseMove)
+	window.removeEventListener('mousedown', handleMouseDown)
+	window.removeEventListener('mouseup', handleMouseUp)
 })
 
 /**
@@ -99,41 +193,102 @@ fontLoader.load('/blog/fonts/helvetiker_regular.typeface.json', (font) => {
 	textMesh.scale.set(0.01, 0.01, 0.01)
 	scene.add(textMesh)
 
-	const donutGeometry = new THREE.TorusGeometry(0.3, 0.2, 20, 45)
+	const donutGeometry = new THREE.TorusGeometry(0.1, 0.05, 20, 45)
+	const coneGeometry = new THREE.ConeGeometry(0.1, 0.3, 8)
+	const boxGeometry = new THREE.BoxGeometry(0.15, 0.15, 0.15)
 
-	for (let i = 0; i < 200; i++) {
+	// 创建一个函数来生成不与文字重叠的位置
+	function generatePositionAwayFromText() {
+		let x, y, z
+		do {
+			x = (Math.random() - 0.5) * 7
+			y = (Math.random() - 0.5) * 7
+			z = (Math.random() - 0.5) * 7
+		} while (
+			// 确保不在文字附近（文字大约占据-1到1的空间）
+			Math.abs(x) < 1.5 &&
+			Math.abs(y) < 1 &&
+			Math.abs(z) < 1
+		)
+		return { x, y, z }
+	}
+
+	for (let i = 0; i < 150; i++) {
 		const donut = new THREE.Mesh(donutGeometry, material)
+		const position = generatePositionAwayFromText()
 
-		donut.position.x = (Math.random() - 0.5) * 10
-		donut.position.y = (Math.random() - 0.5) * 10
-		donut.position.z = (Math.random() - 0.5) * 10
+		donut.position.x = position.x
+		donut.position.y = position.y
+		donut.position.z = position.z
 
 		donut.rotation.x = Math.random() * Math.PI
 		donut.rotation.y = Math.random() * Math.PI
 
-		const scale = Math.random()
+		const scale = Math.random() * 0.5 + 0.5
 
 		donut.scale.set(scale, scale, scale)
 
-		// 保存甜甜圈引用以便后续动画
+		// 保存甜甜圈引用和原始位置以便后续动画
 		donuts.push(donut)
+		donutOriginalPositions.push(donut.position.clone())
 
 		scene.add(donut)
+	}
+
+	// 添加圆锥体
+	for (let i = 0; i < 100; i++) {
+		const cone = new THREE.Mesh(coneGeometry, material)
+		const position = generatePositionAwayFromText()
+
+		cone.position.x = position.x
+		cone.position.y = position.y
+		cone.position.z = position.z
+
+		cone.rotation.x = Math.random() * Math.PI
+		cone.rotation.y = Math.random() * Math.PI
+
+		const scale = Math.random() * 0.5 + 0.5
+
+		cone.scale.set(scale, scale, scale)
+
+		// 保存圆锥引用和原始位置以便后续动画
+		donuts.push(cone)
+		donutOriginalPositions.push(cone.position.clone())
+
+		scene.add(cone)
+	}
+
+	// 添加立方体
+	for (let i = 0; i < 100; i++) {
+		const box = new THREE.Mesh(boxGeometry, material)
+		const position = generatePositionAwayFromText()
+
+		box.position.x = position.x
+		box.position.y = position.y
+		box.position.z = position.z
+
+		box.rotation.x = Math.random() * Math.PI
+		box.rotation.y = Math.random() * Math.PI
+
+		const scale = Math.random() * 0.5 + 0.5
+
+		box.scale.set(scale, scale, scale)
+
+		// 保存立方体引用和原始位置以便后续动画
+		donuts.push(box)
+		donutOriginalPositions.push(box.position.clone())
+
+		scene.add(box)
 	}
 })
 
 onMounted(() => {
 	const canvas: HTMLCanvasElement = document.querySelector('#canvas')!
-	console.log(canvas)
 	renderer = new THREE.WebGLRenderer({
 		canvas,
 	})
 	renderer.setSize(sizes.width, sizes.height)
 	renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-
-	// 不再使用OrbitControls，改用手动控制相机
-	// controls = new OrbitControls(camera, canvas)
-	// controls.enableDamping = true
 
 	scene.add(camera)
 })
@@ -167,34 +322,91 @@ function animate(timestamp: number) {
 			textMesh.scale.set(scale, scale, scale)
 		}
 	} else {
-		// 开场动画结束后，根据鼠标位置控制相机
+		// 平滑地将文字旋转到目标角度
+		currentRotationY += (targetRotationY - currentRotationY) * 0.05
+		currentRotationX += (targetRotationX - currentRotationX) * 0.05
 
-		// 设置相机围绕场景旋转
-		camera.position.x = Math.sin(mouseX * Math.PI) * 10
-		camera.position.y = -mouseY * 5
-		camera.position.z = Math.cos(mouseX * Math.PI) * 10
-
-		// 让相机始终看向原点
-		camera.lookAt(scene.position)
-
-		// 文字绕Y轴自动旋转
 		if (textMesh) {
-			textMesh.rotation.y = elapsed * 0.5
+			textMesh.rotation.y = currentRotationY
+			textMesh.rotation.x = currentRotationX
 		}
 
 		// 甜甜圈轻微浮动和旋转效果
 		donuts.forEach((donut, index) => {
-			// 每个甜甜圈有不同的旋转速度和方向
+			// 每个物体有不同的旋转速度和方向
 			const speed = 0.1 + (index % 10) * 0.01
-			donut.rotation.x += speed * 0.01
-			donut.rotation.y += speed * 0.02
+
+			// 根据物体类型应用不同的旋转效果
+			if (donut.geometry instanceof THREE.TorusGeometry) {
+				// 甜甜圈绕两个轴旋转
+				donut.rotation.x += speed * 0.02
+				donut.rotation.y += speed * 0.04
+			} else if (donut.geometry instanceof THREE.ConeGeometry) {
+				// 圆锥体绕Y轴快速旋转
+				donut.rotation.y += speed * 0.06
+			} else if (donut.geometry instanceof THREE.BoxGeometry) {
+				// 立方体绕所有轴旋转
+				donut.rotation.x += speed * 0.03
+				donut.rotation.y += speed * 0.03
+				donut.rotation.z += speed * 0.03
+			}
 
 			// 轻微上下浮动效果
 			donut.position.y += Math.sin(elapsed * 2 + index) * 0.001
+
+			// 鼠标按下时物体远离，松开时恢复
+			if (donutOriginalPositions[index]) {
+				if (mouseDown) {
+					// 计算远离方向（从原点向外）
+					const direction = donut.position.clone().normalize()
+					// 计算当前位置与原始位置的距离
+					const distanceFromOrigin = donut.position.length()
+					// 设置最大远离距离为原始位置的3倍
+					const maxDistance = donutOriginalPositions[index].length() * 3
+
+					// // 只有当距离小于最大距离时才继续远离
+					// if (distanceFromOrigin < maxDistance) {
+					// 	// 逐渐远离
+					// 	console.log('donut.position', donut.position)
+					// 	donut.position.add(direction.multiplyScalar(0.3))
+					// }
+
+					if (textMesh.position.z < 0.5) {
+						console.log('textMesh.position--------', textMesh.position.z)
+						textMesh.position.z += 0.0005
+						donut.position.add(direction.multiplyScalar(0.6))
+					}
+				} else {
+					// 逐渐回到原始位置
+					if (textMesh.position.z > 0) {
+						console.log('textMesh.position', textMesh.position.z)
+						textMesh.position.z -= 0.0005
+					}
+
+					donut.position.lerp(donutOriginalPositions[index], 0.2)
+				}
+			}
 		})
 	}
 
-	// controls?.update()
+	// 让相机始终看向原点
+	camera.lookAt(scene.position)
+
+	// 星空背景动画效果
+	if (starField) {
+		// 缓慢旋转星空背景，营造宇宙深邃感
+		starField.rotation.x += 0.0001
+		starField.rotation.y += 0.0002
+	}
+
+	// 星云动画效果
+	if (nebulaParticles.length > 0) {
+		nebulaParticles.forEach((nebula, index) => {
+			nebula.rotation.y += 0.0003 * (index + 1)
+			nebula.rotation.x += 0.0002 * (index + 1)
+		})
+	}
+
 	renderer?.render(scene, camera)
 }
 animate()
