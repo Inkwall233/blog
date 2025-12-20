@@ -4,9 +4,9 @@ import { FontLoader } from 'three/addons/loaders/FontLoader.js'
 import { TextGeometry } from 'three/addons/geometries/TextGeometry.js'
 import { TorusGeometry, ConeGeometry, BoxGeometry } from 'three'
 import { onMounted, onUnmounted } from 'vue'
-import * as dat from 'dat.gui'
+// import * as dat from 'dat.gui'
 
-const gui = new dat.GUI({ width: 400 })
+// const gui = new dat.GUI({ width: 400 })
 
 // 创建场景
 const scene = new THREE.Scene()
@@ -101,7 +101,7 @@ const camera = new THREE.PerspectiveCamera(
 // 初始位置设置在更远的地方，以便有足够空间做动画
 camera.position.set(0, 0, 10)
 
-gui.add(camera.position, 'z').min(0).max(100).step(0.1)
+// gui.add(camera.position, 'z').min(0).max(100).step(0.1)
 
 window.addEventListener('resize', () => {
 	// Update sizes
@@ -373,14 +373,14 @@ function animate(timestamp: number) {
 
 					if (textMesh.position.z < 0.5) {
 						console.log('textMesh.position--------', textMesh.position.z)
-						textMesh.position.z += 0.0005
-						donut.position.add(direction.multiplyScalar(0.6))
+						textMesh.position.z += 0.0001
+						donut.position.add(direction.multiplyScalar(0.3))
 					}
 				} else {
 					// 逐渐回到原始位置
 					if (textMesh.position.z > 0) {
 						console.log('textMesh.position', textMesh.position.z)
-						textMesh.position.z -= 0.0005
+						textMesh.position.z -= 0.0001
 					}
 
 					donut.position.lerp(donutOriginalPositions[index], 0.2)
