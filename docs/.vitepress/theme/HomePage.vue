@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js'
-import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js'
-import { onMounted } from 'vue'
-import * as dat from 'dat.gui'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { FontLoader } from 'three/addons/loaders/FontLoader.js'
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js'
+import { onMounted, onUnmounted } from 'vue'
+// import * as dat from 'dat.gui'
 
-const gui = new dat.GUI({ width: 400 })
+// const gui = new dat.GUI({ width: 400 })
 
 // 创建场景
 const scene = new THREE.Scene()
@@ -25,8 +25,9 @@ const camera = new THREE.PerspectiveCamera(
 )
 // 初始位置设置在更远的地方，以便有足够空间做动画
 camera.position.set(0, 0, 10)
+camera.lookAt(0, 0, 0)
 
-gui.add(camera.position, 'z').min(0).max(100).step(0.1)
+// gui.add(camera.position, 'z').min(0).max(100).step(0.1)
 
 window.addEventListener('resize', () => {
 	// Update sizes
@@ -43,9 +44,31 @@ window.addEventListener('resize', () => {
 })
 
 let renderer: THREE.WebGLRenderer | null = null
-let controls: OrbitControls | null = null
 let textMesh: THREE.Mesh | null = null
 let startTime: number | null = null
+let donuts: THREE.Mesh[] = []
+let mouseX = 0
+let mouseY = 0
+
+const windowHalfX = window.innerWidth / 2
+const windowHalfY = window.innerHeight / 2
+
+// 鼠标事件处理函数
+const handleMouseMove = (event: MouseEvent) => {
+	// 将鼠标位置映射到-1到1的范围内
+	mouseX = (event.clientX - windowHalfX) / windowHalfX
+	mouseY = (event.clientY - windowHalfY) / windowHalfY
+}
+
+// 添加鼠标事件监听器
+onMounted(() => {
+	window.addEventListener('mousemove', handleMouseMove)
+})
+
+// 移除鼠标事件监听器
+onUnmounted(() => {
+	window.removeEventListener('mousemove', handleMouseMove)
+})
 
 /**
  * Fonts
@@ -92,6 +115,9 @@ fontLoader.load('/blog/fonts/helvetiker_regular.typeface.json', (font) => {
 
 		donut.scale.set(scale, scale, scale)
 
+		// 保存甜甜圈引用以便后续动画
+		donuts.push(donut)
+
 		scene.add(donut)
 	}
 })
@@ -104,14 +130,16 @@ onMounted(() => {
 	})
 	renderer.setSize(sizes.width, sizes.height)
 	renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-	// Controls
-	controls = new OrbitControls(camera, canvas)
-	controls.enableDamping = true
+
+	// 不再使用OrbitControls，改用手动控制相机
+	// controls = new OrbitControls(camera, canvas)
+	// controls.enableDamping = true
+
 	scene.add(camera)
 })
 
 // 渲染循环
-function animate(timestamp?: number) {
+function animate(timestamp: number) {
 	requestAnimationFrame(animate)
 
 	// 初始化开始时间
@@ -138,9 +166,35 @@ function animate(timestamp?: number) {
 			const scale = 0.01 + 0.99 * easeProgress
 			textMesh.scale.set(scale, scale, scale)
 		}
+	} else {
+		// 开场动画结束后，根据鼠标位置控制相机
+
+		// 设置相机围绕场景旋转
+		camera.position.x = Math.sin(mouseX * Math.PI) * 10
+		camera.position.y = -mouseY * 5
+		camera.position.z = Math.cos(mouseX * Math.PI) * 10
+
+		// 让相机始终看向原点
+		camera.lookAt(scene.position)
+
+		// 文字绕Y轴自动旋转
+		if (textMesh) {
+			textMesh.rotation.y = elapsed * 0.5
+		}
+
+		// 甜甜圈轻微浮动和旋转效果
+		donuts.forEach((donut, index) => {
+			// 每个甜甜圈有不同的旋转速度和方向
+			const speed = 0.1 + (index % 10) * 0.01
+			donut.rotation.x += speed * 0.01
+			donut.rotation.y += speed * 0.02
+
+			// 轻微上下浮动效果
+			donut.position.y += Math.sin(elapsed * 2 + index) * 0.001
+		})
 	}
 
-	controls?.update()
+	// controls?.update()
 	renderer?.render(scene, camera)
 }
 animate()
