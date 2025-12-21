@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import * as THREE from 'three'
-import { FontLoader } from 'three/addons/loaders/FontLoader.js'
-import { TextGeometry } from 'three/addons/geometries/TextGeometry.js'
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js'
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js'
 import { TorusGeometry, ConeGeometry, BoxGeometry } from 'three'
 import { onMounted, onUnmounted } from 'vue'
+
 // import * as dat from 'dat.gui'
 
 // const gui = new dat.GUI({ width: 400 })
@@ -119,6 +120,8 @@ window.addEventListener('resize', () => {
 
 let renderer: THREE.WebGLRenderer | null = null
 let textMesh: THREE.Mesh | null = null
+let blogTextMesh: THREE.Mesh | null = null
+let aboutTextMesh: THREE.Mesh | null = null
 let startTime: number | null = null
 let donuts: THREE.Mesh[] = []
 let mouseX = 0
@@ -192,6 +195,46 @@ fontLoader.load('/blog/fonts/helvetiker_regular.typeface.json', (font) => {
 	// 初始设置文字很小
 	textMesh.scale.set(0.01, 0.01, 0.01)
 	scene.add(textMesh)
+
+	// 创建Blog文本
+	const blogGeometry = new TextGeometry('Blog', {
+		font,
+		size: 0.3,
+		depth: 0.1,
+		curveSegments: 1,
+		bevelEnabled: true,
+		bevelThickness: 0.02,
+		bevelSize: 0.01,
+		bevelOffset: 0,
+		bevelSegments: 1,
+	})
+
+	blogGeometry.center()
+	const blogMaterial = new THREE.MeshNormalMaterial()
+	blogTextMesh = new THREE.Mesh(blogGeometry, blogMaterial)
+	blogTextMesh.position.set(-0.8, -1.5, 0)
+	blogTextMesh.visible = false
+	scene.add(blogTextMesh)
+
+	// 创建About文本
+	const aboutGeometry = new TextGeometry('About', {
+		font,
+		size: 0.3,
+		depth: 0.1,
+		curveSegments: 1,
+		bevelEnabled: true,
+		bevelThickness: 0.02,
+		bevelSize: 0.01,
+		bevelOffset: 0,
+		bevelSegments: 1,
+	})
+
+	aboutGeometry.center()
+	const aboutMaterial = new THREE.MeshNormalMaterial()
+	aboutTextMesh = new THREE.Mesh(aboutGeometry, aboutMaterial)
+	aboutTextMesh.position.set(0.8, -1.5, 0)
+	aboutTextMesh.visible = false
+	scene.add(aboutTextMesh)
 
 	const donutGeometry = new THREE.TorusGeometry(0.1, 0.05, 20, 45)
 	const coneGeometry = new THREE.ConeGeometry(0.1, 0.3, 8)
@@ -291,10 +334,11 @@ onMounted(() => {
 	renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 	scene.add(camera)
+	animate()
 })
 
 // 渲染循环
-function animate(timestamp: number) {
+function animate(timestamp?: number) {
 	requestAnimationFrame(animate)
 
 	// 初始化开始时间
@@ -322,6 +366,15 @@ function animate(timestamp: number) {
 			textMesh.scale.set(scale, scale, scale)
 		}
 	} else {
+		// 确保Blog和About文本可见
+		if (blogTextMesh) {
+			blogTextMesh.visible = true
+		}
+
+		if (aboutTextMesh) {
+			aboutTextMesh.visible = true
+		}
+
 		// 平滑地将文字旋转到目标角度
 		currentRotationY += (targetRotationY - currentRotationY) * 0.05
 		currentRotationX += (targetRotationX - currentRotationX) * 0.05
@@ -371,14 +424,14 @@ function animate(timestamp: number) {
 					// 	donut.position.add(direction.multiplyScalar(0.3))
 					// }
 
-					if (textMesh.position.z < 0.5) {
+					if (textMesh && textMesh.position.z < 0.5) {
 						console.log('textMesh.position--------', textMesh.position.z)
 						textMesh.position.z += 0.0001
 						donut.position.add(direction.multiplyScalar(0.3))
 					}
 				} else {
 					// 逐渐回到原始位置
-					if (textMesh.position.z > 0) {
+					if (textMesh && textMesh.position.z > 0) {
 						console.log('textMesh.position', textMesh.position.z)
 						textMesh.position.z -= 0.0001
 					}
@@ -409,7 +462,98 @@ function animate(timestamp: number) {
 
 	renderer?.render(scene, camera)
 }
-animate()
+
+// 鼠标悬停效果
+let hoveredObject: THREE.Object3D | null = null
+
+function onMouseMove(event: MouseEvent) {
+	// 计算鼠标位置标准化设备坐标 (-1 到 +1)
+	mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+	mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+
+	// 通过摄像机和鼠标位置更新射线
+	raycaster.setFromCamera(mouse, camera)
+
+	// 计算物体相交情况
+	const intersects = raycaster.intersectObjects(
+		[blogTextMesh, aboutTextMesh].filter(Boolean)
+	)
+
+	// 重置之前悬停的对象
+	if (
+		hoveredObject &&
+		!intersects.find((intersect) => intersect.object === hoveredObject)
+	) {
+		if (hoveredObject === blogTextMesh) {
+			;(blogTextMesh as THREE.Mesh).material = new THREE.MeshNormalMaterial()
+		} else if (hoveredObject === aboutTextMesh) {
+			;(aboutTextMesh as THREE.Mesh).material = new THREE.MeshNormalMaterial()
+		}
+		hoveredObject = null
+	}
+
+	// 如果悬停在文本上，改变其颜色
+	if (intersects.length > 0) {
+		const object = intersects[0].object
+		if (object !== hoveredObject) {
+			// 重置之前悬停的对象
+			if (hoveredObject === blogTextMesh) {
+				;(blogTextMesh as THREE.Mesh).material = new THREE.MeshNormalMaterial()
+			} else if (hoveredObject === aboutTextMesh) {
+				;(aboutTextMesh as THREE.Mesh).material = new THREE.MeshNormalMaterial()
+			}
+
+			// 设置新的悬停对象
+			hoveredObject = object
+			if (object === blogTextMesh || object === aboutTextMesh) {
+				;(object as THREE.Mesh).material = new THREE.MeshBasicMaterial({
+					color: 0xff0000,
+				})
+			}
+		}
+	}
+}
+
+// 处理点击事件
+function handleClick(object: THREE.Object3D) {
+	if (object === blogTextMesh) {
+		window.location.href = '/blog/blog/introduce.html'
+	} else if (object === aboutTextMesh) {
+		window.location.href = '/blog/about/introduce.html'
+	}
+}
+
+// 添加射线检测
+const raycaster = new THREE.Raycaster()
+const mouse = new THREE.Vector2()
+
+function onMouseClick(event: MouseEvent) {
+	// 计算鼠标位置标准化设备坐标 (-1 到 +1)
+	mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+	mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+
+	// 通过摄像机和鼠标位置更新射线
+	raycaster.setFromCamera(mouse, camera)
+
+	// 计算物体相交情况
+	const intersects = raycaster.intersectObjects(
+		[blogTextMesh, aboutTextMesh].filter(Boolean)
+	)
+
+	if (intersects.length > 0) {
+		handleClick(intersects[0].object)
+	}
+}
+
+onMounted(() => {
+	window.addEventListener('click', onMouseClick)
+	window.addEventListener('mousemove', onMouseMove)
+})
+
+onUnmounted(() => {
+	window.removeEventListener('click', onMouseClick)
+	window.removeEventListener('mousemove', onMouseMove)
+})
 </script>
 
 <template>
@@ -417,3 +561,4 @@ animate()
 		<canvas id="canvas"></canvas>
 	</div>
 </template>
+<style scoped></style>
