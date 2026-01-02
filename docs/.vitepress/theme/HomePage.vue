@@ -517,7 +517,7 @@ function onMouseMove(event: MouseEvent) {
 // 处理点击事件
 function handleClick(object: THREE.Object3D) {
 	if (object === blogTextMesh) {
-		window.location.href = '/blog/blog/introduce.html'
+		window.location.href = '/blog/blog/20251207MCP.html'
 	} else if (object === aboutTextMesh) {
 		window.location.href = '/blog/about/introduce.html'
 	}
