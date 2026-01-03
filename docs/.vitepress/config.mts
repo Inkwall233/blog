@@ -18,6 +18,7 @@ export default defineConfig({
 					{ text: 'MCP', link: '/blog/20251207MCP' },
 					{ text: 'useSyncExternalStore', link: '/blog/useSyncExternalStore' },
 					{ text: 'useEffect', link: '/blog/useEffect' },
+					{ text: '快速了解TypeScript', link: '/blog/TypeScript-1' },
 				],
 			},
 		],
