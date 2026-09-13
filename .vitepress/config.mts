@@ -15,10 +15,17 @@ export default defineConfig({
 
     sidebar: [
       {
-        text: 'Examples',
+        text: '关于',
+        items: [{ text: '关于本站', link: '/blog/introduce' }],
+      },
+      {
+        text: '博客',
         items: [
-          { text: 'Markdown Examples', link: '/markdown-examples' },
-          { text: 'Runtime API Examples', link: '/api-examples' },
+          { text: '快速了解 TypeScript', link: '/blog/TypeScript-1' },
+          { text: 'MCP', link: '/blog/20251207MCP' },
+          { text: 'Monorepo', link: '/blog/monorepo' },
+          { text: 'useEffect', link: '/blog/useEffect' },
+          { text: 'useSyncExternalStore', link: '/blog/useSyncExternalStore' },
         ],
       },
     ],
