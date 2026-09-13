@@ -13,6 +13,10 @@ export default defineConfig({
 
     sidebar: [
       {
+        text: 'About',
+        link: '/blog/introduce',
+      },
+      {
         text: 'Blog',
         items: [
           { text: 'MCP', link: '/blog/20251207MCP' },
@@ -24,10 +28,6 @@ export default defineConfig({
       {
         text: 'JAVA',
         items: [{ text: 'Spring Boot', link: '/blog/java/20260913springboot' }],
-      },
-      {
-        text: 'About',
-        link: '/blog/introduce',
       },
     ],
     socialLinks: [{ icon: 'github', link: 'https://github.com/inkwall233/' }],

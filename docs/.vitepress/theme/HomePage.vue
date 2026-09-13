@@ -102,6 +102,18 @@ const camera = new THREE.PerspectiveCamera(
 // 初始位置设置在更远的地方，以便有足够空间做动画
 camera.position.set(0, 0, 10)
 
+// 添加光照（MeshStandardMaterial 依赖光照）
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.4)
+scene.add(ambientLight)
+
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0)
+directionalLight.position.set(5, 5, 5)
+scene.add(directionalLight)
+
+const pointLight = new THREE.PointLight(0x4488ff, 0.8, 20)
+pointLight.position.set(-3, -2, 3)
+scene.add(pointLight)
+
 // gui.add(camera.position, 'z').min(0).max(100).step(0.1)
 
 window.addEventListener('resize', () => {
@@ -145,7 +157,23 @@ const handleMouseMove = (event: MouseEvent) => {
   targetRotationX = (mouseY * Math.PI) / 3
 }
 
-const handleMouseDown = () => {
+// 检查鼠标是否在 Blog/About 上
+function isPointerOnNavText(): boolean {
+  raycaster.setFromCamera(mouse, camera)
+  const intersects = raycaster.intersectObjects(
+    [blogTextMesh, aboutTextMesh].filter(Boolean),
+  )
+  return intersects.length > 0
+}
+
+const handleMouseDown = (event: MouseEvent) => {
+  // 先更新鼠标坐标，再检测是否点在 Blog/About 上
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+
+  if (isPointerOnNavText()) {
+    return // 点击导航文字时，不触发放大效果
+  }
   mouseDown = true
 }
 
@@ -466,6 +494,21 @@ function animate(timestamp?: number) {
 // 鼠标悬停效果
 let hoveredObject: THREE.Object3D | null = null
 
+// 带发光效果的材质工厂
+function createHoverMaterial() {
+  return new THREE.MeshStandardMaterial({
+    color: 0x88ccff,
+    emissive: 0x4488ff,
+    emissiveIntensity: 0.8,
+    roughness: 0.3,
+    metalness: 0.6,
+  })
+}
+
+function createDefaultMaterial() {
+  return new THREE.MeshNormalMaterial()
+}
+
 function onMouseMove(event: MouseEvent) {
   // 计算鼠标位置标准化设备坐标 (-1 到 +1)
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1
@@ -479,36 +522,39 @@ function onMouseMove(event: MouseEvent) {
     [blogTextMesh, aboutTextMesh].filter(Boolean),
   )
 
+  const isHovering = intersects.length > 0
+
+  // 切换鼠标光标
+  document.body.style.cursor = isHovering ? 'pointer' : 'default'
+
   // 重置之前悬停的对象
   if (
     hoveredObject &&
     !intersects.find((intersect) => intersect.object === hoveredObject)
   ) {
     if (hoveredObject === blogTextMesh) {
-      ;(blogTextMesh as THREE.Mesh).material = new THREE.MeshNormalMaterial()
+      ;(blogTextMesh as THREE.Mesh).material = createDefaultMaterial()
     } else if (hoveredObject === aboutTextMesh) {
-      ;(aboutTextMesh as THREE.Mesh).material = new THREE.MeshNormalMaterial()
+      ;(aboutTextMesh as THREE.Mesh).material = createDefaultMaterial()
     }
     hoveredObject = null
   }
 
-  // 如果悬停在文本上，改变其颜色
-  if (intersects.length > 0) {
+  // 如果悬停在文本上，改变其材质和发光
+  if (isHovering) {
     const object = intersects[0].object
     if (object !== hoveredObject) {
       // 重置之前悬停的对象
       if (hoveredObject === blogTextMesh) {
-        ;(blogTextMesh as THREE.Mesh).material = new THREE.MeshNormalMaterial()
+        ;(blogTextMesh as THREE.Mesh).material = createDefaultMaterial()
       } else if (hoveredObject === aboutTextMesh) {
-        ;(aboutTextMesh as THREE.Mesh).material = new THREE.MeshNormalMaterial()
+        ;(aboutTextMesh as THREE.Mesh).material = createDefaultMaterial()
       }
 
       // 设置新的悬停对象
       hoveredObject = object
       if (object === blogTextMesh || object === aboutTextMesh) {
-        ;(object as THREE.Mesh).material = new THREE.MeshBasicMaterial({
-          color: 0xff0000,
-        })
+        ;(object as THREE.Mesh).material = createHoverMaterial()
       }
     }
   }
