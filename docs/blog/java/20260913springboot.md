@@ -83,3 +83,44 @@ public class HelloController {
 }
 
 ```
+## RestFul 风格
+RestFul 风格是一种基于 HTTP 协议的 API 设计风格，它将资源（Resource）作为 API 的中心，通过 HTTP 请求方法来操作资源。
+
+传统接口 VS RestFul 风格
++ 传统方式： /getUser、/deleteUrl，在url里面写动作，如getUser、deleteUrl
++ RestFul 风格：将资源（如数据库表、文件等）作为 API 的中心，通过 HTTP 请求方法来操作资源。
+  + GET：获取资源，如查询用户列表
+  + DELETE：删除资源，如删除用户
+  + POST：创建资源，如创建用户
+  + PUT：更新资源，如更新用户信息
+
+```java
+package com.example.demo.controller;
+
+import com.example.demo.entity.User;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+public class UserController {
+    @RequestMapping("/user")
+    @GetMapping("/{id}")
+    public String getUser(@PathVariable Long id) {
+        return "getUser" + id;
+    }
+
+    @PostMapping("/")
+    public String save(@RequestBody User user){
+        return "用户新增成功";
+    }
+
+    @PutMapping("/{id}")
+    public String update(@PathVariable long id, @RequestBody User user) {
+        return "yy用户更新成功";
+    }
+
+    @DeleteMapping("/{id}")
+    public String delete(@PathVariable long id) {
+        return "yy用户删除成功";
+    }
+}
+```
