@@ -29,6 +29,15 @@ export default defineConfig({
         text: 'JAVA',
         items: [{ text: 'Spring Boot', link: '/blog/java/20260913springboot' }],
       },
+      {
+        text: 'Docker',
+        items: [
+          {
+            text: 'Docker 入门到实践一',
+            link: '/blog/docker/20260918InstallDockers',
+          },
+        ],
+      },
     ],
     socialLinks: [{ icon: 'github', link: 'https://github.com/inkwall233/' }],
   },
