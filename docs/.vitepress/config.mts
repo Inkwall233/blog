@@ -34,7 +34,7 @@ export default defineConfig({
         items: [
           {
             text: 'Docker 入门到实践一',
-            link: '/blog/docker/20260918InstallDockers',
+            link: '/blog/docker/20260918InstallDocker',
           },
         ],
       },
