@@ -377,5 +377,85 @@ $ docker init -d -p 8080:80 nginx:1.28
 
 
 #### 手动创建Dockerfile
+还以之前定制`nginx`镜像为例
+```docker
+$ mkdir mynginx
+$ cd mynginx
+$ 新建 Dockerfile
+```
 
+其内容为
+```docker
+FROM nginx:1.28
+RUN echo "<h1>Hello Docker!</h1>" > /usr/share/nginx/html/index.html
+```
+这个Dockerfile比较简单，一共两行。涉及两条指令，`FROM`和`RUN`。
 
+#### FROM指定基础镜像
+FROM指令用于指定基础镜像，Dockerfile中必须有且只能有一个FROM指令。
+FROM指令后面跟着基础镜像的名称，例如`FROM nginx:1.28`。
+
+如果没有找到对应服务的镜像，官方镜像中还提供了一些更为基础的操作系统镜像，如ubuntu、debian等。
+使用方法如下：
+```docker
+FROM ubuntu:22.04
+```
+
+除了选择现有镜像外，Docker还存在一个特殊的镜像，即`FROM scratch`。这个镜像时虚拟的概念，它表示一个空的镜像，没有预安装任何软件。
+
+#### RUN执行命令
+`RUN`指令用于在镜像中执行命令。其格式有两种
++ shell格式: RUN <命令>
+  例如`RUN echo "<h1>Hello Docker!</h1>" > /usr/share/nginx/html/index.html`
+  这种格式适用于执行简单的命令，例如安装软件、修改配置文件等。
++ exec格式: RUN ["可执行文件", "参数1", "参数2", ...]
+
+> 注意
+  每一个`RUN`指令都会创建一层新的镜像。为了减少镜像体积和层数，我们通常会将多个命令合并到一个`RUN`指令中。
+
+#### 构建镜像
+在Dockerfile所在目录下执行以下命令构建镜像
+
+```docker
+$ docker build -t mynginx .
+```
+
+从命令的输出结构中，我们可以清楚的看到镜像构建构成。
+
+#### 镜像构建上下文
+docker build命令最后有个`.`。`.`表示当前目录。Docker会将当前目录下的所有文件打包到镜像中。如果当前目录下有子目录，Docker会递归打包子目录下的所有文件。
+
+docker build的工作原理。docker build默认会通过Buildx向BuildKit发送构建请求。无论后端运行在本机还是远程主机上，位置参数指定的都是 **构建上下文** ，也就是构建器可以访问到的文件集合。
+
+当我们进行镜像构建的时候，并非所有定制都会通过 RUN 指令完成，经常还需要把本地文件复制进镜像，比如通过 COPY 指令、ADD 指令等。因此，构建器必须能够访问这些文件，而它能访问的范围正是你传给 docker build 的那个上下文。
+
+如果在Dockerfile中这么写
+```docker
+COPY ./package.json /app/
+```
+这并不是复制执行`docker build`命令所在目录下的`package.json`文件，也不是复制`Dockerfile`所在目录下的`package.json`文件。而是复制 **上下文（context）** 的`package.json`文件。
+
+一般来说，应该会将 Dockerfile 置于一个空目录下，或者项目根目录下。如果该目录下没有所需文件，那么应该把所需文件复制一份过来。如果目录下有些东西确实不希望构建时传给 Docker 引擎，那么可以用 .gitignore 一样的语法写一个 .dockerignore，该文件是用于剔除不需要作为上下文传递给 Docker 引擎的。
+
+#### 其他docker build的用法
+直接用 Git repo 作为构建上下文
+```docker
+$ docker build -t mynginx https://github.com/mynginx/mynginx.git
+```
+#### 实现原理
+镜像与分层存储
+Docker 镜像并不是一个单纯的文件，而是由一组文件系统叠加构成的。
+
+最底层的镜像称为 基础镜像 (Base Image)，通常是各种 Linux 发行版的 root 文件系统，如 Ubuntu、Debian、CentOS 等。
+
+当我们在基础镜像之上构建新的镜像时（例如安装了 Nginx），Docker 并不是复制一份基础镜像，而是在基础镜像之上，新建一个层 (Layer)，并在该层中仅记录为了安装 Nginx 而发生的文件变更（添加、修改、删除）。
+
+这种分层存储结构使得镜像的复用、分发变得非常高效：
+
+复用：如果多个镜像都基于同一个基础镜像（例如都基于 ubuntu:24.04），那么宿主机只需要下载一份 ubuntu:24.04，所有镜像都可以共享它。
+
+轻量分发：镜像可以复用已有层，只传输和存储新增差异层；不过镜像是否足够小，仍然取决于基础镜像和新增内容本身。
+
+容器层与读写
+镜像的每一层都是只读的（Read-Only）。
+当容器启动时，Docker 会在容器层之上，新建一个可读写层（Writable Layer），通常被称为 容器层。
